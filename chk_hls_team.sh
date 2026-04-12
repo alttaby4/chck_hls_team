@@ -16,26 +16,25 @@ echo "--------------------------------------------------------------------------
 
 for DOMAIN in "${DOMAINS[@]}"; do
     # 1. Проверка Пинга и получение времени ответа
-    # Сохраняем вывод пинга в переменную
     PING_OUT=$(ping -c 1 -W 1 "$DOMAIN" 2>/dev/null)
     
     if [ $? -eq 0 ]; then
         PING_RES="\e[1;32mUP\e[0m"
-        # Вырезаем время ответа (ms)
+        # Извлекаем время из строки "time=45.2 ms"
         LATENCY=$(echo "$PING_OUT" | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1 " ms"}')
     else
         PING_RES="\e[1;31mDOWN\e[0m"
         LATENCY="---"
     fi
 
-    # 2. Проверка SSL сертификата (порт 443)
+    # 2. Проверка SSL (порт 443)
     END_DATE_STR=$(timeout 2 openssl s_client -servername "$DOMAIN" -connect "$DOMAIN":443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
 
     if [ -z "$END_DATE_STR" ]; then
         SSL_DAYS="N/A"
         STATUS="\e[1;31mSSL ERROR\e[0m"
     else
-        # Вычисление дней до истечения
+        # Расчет дней до истечения
         END_DATE_S=$(date -d "$END_DATE_STR" +%s)
         CURRENT_DATE_S=$(date +%s)
         DAYS_LEFT=$(( (END_DATE_S - CURRENT_DATE_S) / 86400 ))
@@ -50,6 +49,6 @@ for DOMAIN in "${DOMAINS[@]}"; do
         fi
     fi
 
-    # Вывод строки данных
+    # Вывод данных в таблицу
     printf "%-18s %-20b %-12s %-10s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$STATUS"
 done
