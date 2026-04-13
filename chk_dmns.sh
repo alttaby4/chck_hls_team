@@ -4,7 +4,7 @@
 DOMAINS=(
     "new.tv.team" "new.tvteam.pro" "new.tvteam.eu" "speed.tv.team" "speed.tvteam.pro"
     "speed.tv.in" "speed.hls.ga" "webplayer.tv.in" "tv.team" "tvteam.eu"
-    "speed.tvteam.eu" "wiki.tv.in" "new.tvtm.one" "tvtm.one" "new.hls.ga"
+    "speed.tvteam.eu" "wiki.tv.in" "rus.tvtm.one" "tvtm.one" "rus.hls.ga"
      "epg.team" "rus.epg.team" "tv.team" "team.ga"
     "tvteam.eu" "tvteam.pro"
 )
