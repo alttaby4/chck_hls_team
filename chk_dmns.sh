@@ -6,7 +6,7 @@ DOMAINS=(
     "speed.tv.in" "speed.hls.ga" "webplayer.tv.in" "tv.team" "tvteam.eu"
     "speed.tvteam.eu" "wiki.tv.in" "rus.tvtm.one" "tvtm.one" "rus.hls.ga"
      "epg.team" "rus.epg.team" "tv.team" "speed.team.ga"
-    "tvteam.eu" "tvteam.pro" "tv.in" 
+    "tvteam.eu" "tvteam.pro" 
 )
 
 # Заголовки таблицы
