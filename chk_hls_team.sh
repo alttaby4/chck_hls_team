@@ -42,7 +42,7 @@ for DOMAIN in "${DOMAINS[@]}"; do
 
         if [ "$DAYS_LEFT" -le 0 ]; then
             STATUS="\e[1;31mEXPIRED\e[0m"
-        elif [ "$DAYS_LEFT" -le 14 ]; then
+        elif [ "$DAYS_LEFT" -le 4 ]; then
             STATUS="\e[1;33mRENEW SOON\e[0m"
         else
             STATUS="\e[1;32mOK\e[0m"
