@@ -15,17 +15,13 @@ echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-6s %-25s %-15s\e[0m" "DOMAIN" "PING" 
 echo "----------------------------------------------------------------------------------------------------------------"
 
 for DOMAIN in "${DOMAINS[@]}"; do
-    # 0. Получение Локации и AS Name через ip-api.com
-    # Запрашиваем формат: countryCode,as (например: "NL,AS16276 OVH SAS")
-    GEO_DATA=$(curl -s "http://ip-api.com/line/$DOMAIN?fields=countryCode,as")
-    
-    if [ -z "$GEO_DATA" ]; then
-        LOC="??"
-        AS_NAME="Unknown"
-    else
-        LOC=$(echo "$GEO_DATA" | sed -n '1p')
-        AS_NAME=$(echo "$GEO_DATA" | sed -n '2p' | cut -c1-25)
-    fi
+    # 0. Получение данных через ipinfo.io
+    # Мы запрашиваем страну и организацию (ASN + Name)
+    LOC=$(curl -s "https://ipinfo.io/$DOMAIN/country" | xargs)
+    AS_NAME=$(curl -s "https://ipinfo.io/$DOMAIN/org" | cut -c1-25 | xargs)
+
+    if [ -z "$LOC" ]; then LOC="??"; fi
+    if [ -z "$AS_NAME" ]; then AS_NAME="Unknown"; fi
 
     # 1. Проверка Пинга и получение времени ответа
     PING_OUT=$(ping -c 1 -W 1 "$DOMAIN" 2>/dev/null)
@@ -45,7 +41,6 @@ for DOMAIN in "${DOMAINS[@]}"; do
         SSL_DAYS="N/A"
         STATUS="\e[1;31mSSL ERROR\e[0m"
     else
-        # Расчет дней до истечения
         END_DATE_S=$(date -d "$END_DATE_STR" +%s)
         CURRENT_DATE_S=$(date +%s)
         DAYS_LEFT=$(( (END_DATE_S - CURRENT_DATE_S) / 86400 ))
