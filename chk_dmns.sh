@@ -3,10 +3,11 @@
 # Список доменов
 DOMAINS=(
     "new.tv.team" "new.tvteam.pro" "new.tvteam.eu" "speed.tv.team" "speed.tvteam.pro"
-    "speed.tv.in" "speed.hls.ga" "webplayer.tv.in" "tv.team" "tvteam.eu"
+    "speed.tv.in" "speed.hls.ga" "webplayer.tv.in" "tv.team" "tvteam.eu" "team.ga"
     "speed.tvteam.eu" "wiki.tv.in" "rus.tvtm.one" "tvtm.one" "rus.hls.ga"
      "epg.team" "rus.epg.team" "tv.team" "speed.team.ga" "1.1usd.tv"
     "2.1usd.tv" "tvteam.pro" "de.1usd.tv" "ua.1usd.tv" "troya.tv" "troya.info" "chat.tv.in"
+    "speed.troya.tv" "speed.troya.info"
 )
 
 # Заголовки таблицы
