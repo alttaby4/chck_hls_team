@@ -16,14 +16,14 @@ echo "--------------------------------------------------------------------------
 
 for DOMAIN in "${DOMAINS[@]}"; do
     # 0. Получение данных через ipinfo.io
-    # Мы запрашиваем страну и организацию (ASN + Name)
-    LOC=$(curl -s "https://ipinfo.io/$DOMAIN/country" | xargs)
-    AS_NAME=$(curl -s "https://ipinfo.io/$DOMAIN/org" | cut -c1-25 | xargs)
+    # Используем tr -d '\n\r' для очистки вывода вместо xargs
+    LOC=$(curl -s "https://ipinfo.io/$DOMAIN/country" | tr -d '\n\r ')
+    AS_NAME=$(curl -s "https://ipinfo.io/$DOMAIN/org" | tr -d '\n\r' | cut -c1-25)
 
-    if [ -z "$LOC" ]; then LOC="??"; fi
-    if [ -z "$AS_NAME" ]; then AS_NAME="Unknown"; fi
+    [ -z "$LOC" ] && LOC="??"
+    [ -z "$AS_NAME" ] && AS_NAME="Unknown"
 
-    # 1. Проверка Пинга и получение времени ответа
+    # 1. Проверка Пинга
     PING_OUT=$(ping -c 1 -W 1 "$DOMAIN" 2>/dev/null)
     
     if [ $? -eq 0 ]; then
@@ -34,7 +34,7 @@ for DOMAIN in "${DOMAINS[@]}"; do
         LATENCY="---"
     fi
 
-    # 2. Проверка SSL (порт 443)
+    # 2. Проверка SSL
     END_DATE_STR=$(timeout 3 openssl s_client -servername "$DOMAIN" -connect "$DOMAIN":443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
 
     if [ -z "$END_DATE_STR" ]; then
@@ -55,6 +55,6 @@ for DOMAIN in "${DOMAINS[@]}"; do
         fi
     fi
 
-    # Вывод данных в таблицу
+    # Вывод данных
     printf "%-18s %-20b %-12s %-10s %-6s %-25s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$LOC" "$AS_NAME" "$STATUS"
 done
