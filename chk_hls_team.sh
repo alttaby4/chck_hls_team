@@ -10,26 +10,26 @@ DOMAINS=(
     "ua2.hls.ga" "ru4.hls.ga" "ru5.hls.ga" "ru6.hls.ga" "17.hls.ga" "pl.hls.ga"
 )
 
-# Заголовки таблицы
-echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-10s %-20s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "ASN" "PROVIDER" "STATUS"
-echo "----------------------------------------------------------------------------------------------------------------"
+# Заголовки таблицы (обновлены под новые колонки)
+echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-12s %-20s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "ASN" "PROVIDER" "STATUS"
+echo "-----------------------------------------------------------------------------------------------------------------------"
 
 for DOMAIN in "${DOMAINS[@]}"; do
-    # 0. Получение IP, ASN и Провайдера
+    # 0. Получение IP и данных о сети
     IP=$(dig +short "$DOMAIN" | tail -n1)
-    if [ -n "$IP" ]; then
-        # Запрашиваем данные один раз, чтобы не спамить whois
-        WHOIS_RAW=$(whois -h whois.radb.net "$IP" 2>/dev/null)
-        ASN=$(echo "$WHOIS_RAW" | grep -i "origin" | awk '{print $2}' | head -n1)
-        # Извлекаем название организации (descr), очищаем от лишних пробелов и берем первое слово/строку
-        PROVIDER=$(echo "$WHOIS_RAW" | grep -i "descr" | head -n1 | sed 's/descr://g' | xargs | cut -c1-20)
-    else
-        ASN="N/A"
-        PROVIDER="N/A"
-    fi
     
-    [ -z "$ASN" ] && ASN="---"
-    [ -z "$PROVIDER" ] && PROVIDER="---"
+    if [ -z "$IP" ]; then
+        ASN="---"
+        PROVIDER="DNS ERROR"
+    else
+        # Запрос к whois (используем radb.net для скорости получения ASN и descr)
+        WHOIS_DATA=$(whois -h whois.radb.net "$IP" 2>/dev/null)
+        ASN=$(echo "$WHOIS_DATA" | grep -i "origin" | awk '{print $2}' | head -n1)
+        PROVIDER=$(echo "$WHOIS_DATA" | grep -i "descr" | head -n1 | sed 's/descr://g' | xargs | cut -c1-20)
+        
+        [ -z "$ASN" ] && ASN="Unknown"
+        [ -z "$PROVIDER" ] && PROVIDER="Unknown"
+    fi
 
     # 1. Проверка Пинга и получение времени ответа
     PING_OUT=$(ping -c 1 -W 1 "$DOMAIN" 2>/dev/null)
@@ -49,6 +49,7 @@ for DOMAIN in "${DOMAINS[@]}"; do
         SSL_DAYS="N/A"
         STATUS="\e[1;31mSSL ERROR\e[0m"
     else
+        # Расчет дней до истечения
         END_DATE_S=$(date -d "$END_DATE_STR" +%s)
         CURRENT_DATE_S=$(date +%s)
         DAYS_LEFT=$(( (END_DATE_S - CURRENT_DATE_S) / 86400 ))
@@ -64,5 +65,5 @@ for DOMAIN in "${DOMAINS[@]}"; do
     fi
 
     # Вывод данных в таблицу
-    printf "%-18s %-20b %-12s %-10s %-10s %-20s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$ASN" "$PROVIDER" "$STATUS"
+    printf "%-18s %-20b %-12s %-10s %-12s %-20s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$ASN" "$PROVIDER" "$STATUS"
 done
