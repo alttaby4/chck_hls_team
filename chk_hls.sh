@@ -15,10 +15,17 @@ echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-6s %-25s %-15s\e[0m" "DOMAIN" "PING" 
 echo "----------------------------------------------------------------------------------------------------------------"
 
 for DOMAIN in "${DOMAINS[@]}"; do
-    # 0. Получение данных через ipinfo.io
-    # Используем tr -d '\n\r' для очистки вывода вместо xargs
-    LOC=$(curl -s "https://ipinfo.io/$DOMAIN/country" | tr -d '\n\r ')
-    AS_NAME=$(curl -s "https://ipinfo.io/$DOMAIN/org" | tr -d '\n\r' | cut -c1-25)
+    # 0. Сначала резолвим домен в IP
+    IP=$(dig +short "$DOMAIN" | tail -n1)
+
+    if [ -z "$IP" ]; then
+        LOC="??"
+        AS_NAME="DNS Error"
+    else
+        # Теперь запрашиваем данные по конкретному IP
+        LOC=$(curl -s "https://ipinfo.io/$IP/country" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        AS_NAME=$(curl -s "https://ipinfo.io/$IP/org" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | cut -c1-25)
+    fi
 
     [ -z "$LOC" ] && LOC="??"
     [ -z "$AS_NAME" ] && AS_NAME="Unknown"
