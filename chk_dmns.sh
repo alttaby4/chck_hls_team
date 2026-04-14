@@ -11,16 +11,24 @@ DOMAINS=(
 )
 
 # Заголовки таблицы
-echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "STATUS"
-echo "--------------------------------------------------------------------------------"
+echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-25s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "AS NAME" "STATUS"
+echo "----------------------------------------------------------------------------------------------------"
 
 for DOMAIN in "${DOMAINS[@]}"; do
+    # 0. Получение AS Name через API (быстро и точно)
+    # Запрос возвращает строку вида "AS12345 Name of Provider"
+    AS_DATA=$(curl -s "http://ip-api.com/line/$DOMAIN?fields=as")
+    if [ -z "$AS_DATA" ]; then
+        AS_NAME="Unknown"
+    else
+        AS_NAME=$(echo "$AS_DATA" | cut -c1-25) # Ограничиваем длину для таблицы
+    fi
+
     # 1. Проверка Пинга и получение времени ответа
     PING_OUT=$(ping -c 1 -W 1 "$DOMAIN" 2>/dev/null)
     
     if [ $? -eq 0 ]; then
         PING_RES="\e[1;32mUP\e[0m"
-        # Извлекаем время из строки "time=45.2 ms"
         LATENCY=$(echo "$PING_OUT" | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1 " ms"}')
     else
         PING_RES="\e[1;31mDOWN\e[0m"
@@ -50,5 +58,5 @@ for DOMAIN in "${DOMAINS[@]}"; do
     fi
 
     # Вывод данных в таблицу
-    printf "%-18s %-20b %-12s %-10s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$STATUS"
+    printf "%-18s %-20b %-12s %-10s %-25s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$AS_NAME" "$STATUS"
 done
