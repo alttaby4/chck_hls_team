@@ -28,7 +28,7 @@ for DOMAIN in "${DOMAINS[@]}"; do
     fi
 
     # 2. Проверка SSL (порт 443)
-    END_DATE_STR=$(timeout 2 openssl s_client -servername "$DOMAIN" -connect "$DOMAIN":443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+    END_DATE_STR=$(timeout 3 openssl s_client -servername "$DOMAIN" -connect "$DOMAIN":443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
 
     if [ -z "$END_DATE_STR" ]; then
         SSL_DAYS="N/A"
