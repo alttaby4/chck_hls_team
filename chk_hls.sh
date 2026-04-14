@@ -11,17 +11,20 @@ DOMAINS=(
 )
 
 # Заголовки таблицы
-echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-25s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "AS NAME" "STATUS"
-echo "----------------------------------------------------------------------------------------------------"
+echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-6s %-25s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "LOC" "AS NAME" "STATUS"
+echo "----------------------------------------------------------------------------------------------------------------"
 
 for DOMAIN in "${DOMAINS[@]}"; do
-    # 0. Получение AS Name через API (быстро и точно)
-    # Запрос возвращает строку вида "AS12345 Name of Provider"
-    AS_DATA=$(curl -s "http://ip-api.com/line/$DOMAIN?fields=as")
-    if [ -z "$AS_DATA" ]; then
+    # 0. Получение Локации и AS Name через ip-api.com
+    # Запрашиваем формат: countryCode,as (например: "NL,AS16276 OVH SAS")
+    GEO_DATA=$(curl -s "http://ip-api.com/line/$DOMAIN?fields=countryCode,as")
+    
+    if [ -z "$GEO_DATA" ]; then
+        LOC="??"
         AS_NAME="Unknown"
     else
-        AS_NAME=$(echo "$AS_DATA" | cut -c1-25) # Ограничиваем длину для таблицы
+        LOC=$(echo "$GEO_DATA" | sed -n '1p')
+        AS_NAME=$(echo "$GEO_DATA" | sed -n '2p' | cut -c1-25)
     fi
 
     # 1. Проверка Пинга и получение времени ответа
@@ -58,5 +61,5 @@ for DOMAIN in "${DOMAINS[@]}"; do
     fi
 
     # Вывод данных в таблицу
-    printf "%-18s %-20b %-12s %-10s %-25s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$AS_NAME" "$STATUS"
+    printf "%-18s %-20b %-12s %-10s %-6s %-25s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$LOC" "$AS_NAME" "$STATUS"
 done
