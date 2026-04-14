@@ -11,20 +11,26 @@ DOMAINS=(
 )
 
 # Заголовки таблицы
-echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-25s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "AS NAME" "STATUS"
-echo "----------------------------------------------------------------------------------------------------"
+echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-6s %-25s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "LOC" "AS NAME" "STATUS"
+echo "----------------------------------------------------------------------------------------------------------------"
 
 for DOMAIN in "${DOMAINS[@]}"; do
-    # 0. Получение AS Name через API (быстро и точно)
-    # Запрос возвращает строку вида "AS12345 Name of Provider"
-    AS_DATA=$(curl -s "http://ip-api.com/line/$DOMAIN?fields=as")
-    if [ -z "$AS_DATA" ]; then
-        AS_NAME="Unknown"
+    # 0. Сначала резолвим домен в IP
+    IP=$(dig +short "$DOMAIN" | tail -n1)
+
+    if [ -z "$IP" ]; then
+        LOC="??"
+        AS_NAME="DNS Error"
     else
-        AS_NAME=$(echo "$AS_DATA" | cut -c1-25) # Ограничиваем длину для таблицы
+        # Теперь запрашиваем данные по конкретному IP
+        LOC=$(curl -s "https://ipinfo.io/$IP/country" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        AS_NAME=$(curl -s "https://ipinfo.io/$IP/org" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | cut -c1-25)
     fi
 
-    # 1. Проверка Пинга и получение времени ответа
+    [ -z "$LOC" ] && LOC="??"
+    [ -z "$AS_NAME" ] && AS_NAME="Unknown"
+
+    # 1. Проверка Пинга
     PING_OUT=$(ping -c 1 -W 1 "$DOMAIN" 2>/dev/null)
     
     if [ $? -eq 0 ]; then
@@ -35,14 +41,13 @@ for DOMAIN in "${DOMAINS[@]}"; do
         LATENCY="---"
     fi
 
-    # 2. Проверка SSL (порт 443)
+    # 2. Проверка SSL
     END_DATE_STR=$(timeout 3 openssl s_client -servername "$DOMAIN" -connect "$DOMAIN":443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
 
     if [ -z "$END_DATE_STR" ]; then
         SSL_DAYS="N/A"
         STATUS="\e[1;31mSSL ERROR\e[0m"
     else
-        # Расчет дней до истечения
         END_DATE_S=$(date -d "$END_DATE_STR" +%s)
         CURRENT_DATE_S=$(date +%s)
         DAYS_LEFT=$(( (END_DATE_S - CURRENT_DATE_S) / 86400 ))
@@ -57,6 +62,6 @@ for DOMAIN in "${DOMAINS[@]}"; do
         fi
     fi
 
-    # Вывод данных в таблицу
-    printf "%-18s %-20b %-12s %-10s %-25s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$AS_NAME" "$STATUS"
+    # Вывод данных
+    printf "%-18s %-20b %-12s %-10s %-6s %-25s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$LOC" "$AS_NAME" "$STATUS"
 done
