@@ -10,20 +10,26 @@ DOMAINS=(
     "ua2.hls.ga" "ru4.hls.ga" "ru5.hls.ga" "ru6.hls.ga" "17.hls.ga" "pl.hls.ga"
 )
 
-# Заголовки таблицы (добавлен ASN)
-echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-10s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "ASN" "STATUS"
-echo "-----------------------------------------------------------------------------------------------"
+# Заголовки таблицы
+echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-10s %-20s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "ASN" "PROVIDER" "STATUS"
+echo "----------------------------------------------------------------------------------------------------------------"
 
 for DOMAIN in "${DOMAINS[@]}"; do
-    # 0. Получение IP и ASN
+    # 0. Получение IP, ASN и Провайдера
     IP=$(dig +short "$DOMAIN" | tail -n1)
     if [ -n "$IP" ]; then
-        # Получаем только номер AS через whois
-        ASN=$(whois -h whois.radb.net "$IP" | grep -i "origin" | awk '{print $2}' | head -n1)
+        # Запрашиваем данные один раз, чтобы не спамить whois
+        WHOIS_RAW=$(whois -h whois.radb.net "$IP" 2>/dev/null)
+        ASN=$(echo "$WHOIS_RAW" | grep -i "origin" | awk '{print $2}' | head -n1)
+        # Извлекаем название организации (descr), очищаем от лишних пробелов и берем первое слово/строку
+        PROVIDER=$(echo "$WHOIS_RAW" | grep -i "descr" | head -n1 | sed 's/descr://g' | xargs | cut -c1-20)
     else
         ASN="N/A"
+        PROVIDER="N/A"
     fi
-    [ -z "$ASN" ] && ASN="N/A"
+    
+    [ -z "$ASN" ] && ASN="---"
+    [ -z "$PROVIDER" ] && PROVIDER="---"
 
     # 1. Проверка Пинга и получение времени ответа
     PING_OUT=$(ping -c 1 -W 1 "$DOMAIN" 2>/dev/null)
@@ -57,6 +63,6 @@ for DOMAIN in "${DOMAINS[@]}"; do
         fi
     fi
 
-    # Вывод данных в таблицу (добавлен вывод переменной ASN)
-    printf "%-18s %-20b %-12s %-10s %-10s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$ASN" "$STATUS"
+    # Вывод данных в таблицу
+    printf "%-18s %-20b %-12s %-10s %-10s %-20s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$ASN" "$PROVIDER" "$STATUS"
 done
