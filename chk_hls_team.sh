@@ -10,45 +10,56 @@ DOMAINS=(
     "ua2.hls.ga" "ru4.hls.ga" "ru5.hls.ga" "ru6.hls.ga" "17.hls.ga" "pl.hls.ga"
 )
 
-# Заголовки таблицы
-echo -e "\e[1;34m%-18s %-10s %-12s %-10s %-15s\e[0m" "DOMAIN" "PING" "LATENCY" "SSL DAYS" "STATUS"
-echo "--------------------------------------------------------------------------------"
+# Цвета
+BLUE='\e[1;34m'
+GREEN='\e[1;32m'
+RED='\e[1;31m'
+YELLOW='\e[1;33m'
+NC='\e[0m'
+
+# Заголовки таблицы (расширенные)
+echo -e "${BLUE}%-18s %-8s %-10s %-8s %-12s %-25s${NC}" "DOMAIN" "PING" "LATENCY" "SSL" "ASN" "PROVIDER"
+echo "---------------------------------------------------------------------------------------------------"
 
 for DOMAIN in "${DOMAINS[@]}"; do
-    # 1. Проверка Пинга и получение времени ответа
-    PING_OUT=$(ping -c 1 -W 1 "$DOMAIN" 2>/dev/null)
+    # 1. Получаем IP адрес
+    IP=$(dig +short "$DOMAIN" | tail -n1)
     
+    if [ -z "$IP" ]; then
+        printf "%-18s %-8b %-10s %-8s %-12s %-25s\n" "$DOMAIN" "${RED}ERR${NC}" "---" "---" "---" "DNS Resolve Error"
+        continue
+    fi
+
+    # 2. Проверка Пинга
+    PING_OUT=$(ping -c 1 -W 1 "$IP" 2>/dev/null)
     if [ $? -eq 0 ]; then
-        PING_RES="\e[1;32mUP\e[0m"
-        # Извлекаем время из строки "time=45.2 ms"
-        LATENCY=$(echo "$PING_OUT" | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1 " ms"}')
+        PING_RES="${GREEN}UP${NC}"
+        LATENCY=$(echo "$PING_OUT" | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1 "ms"}')
     else
-        PING_RES="\e[1;31mDOWN\e[0m"
+        PING_RES="${RED}DOWN${NC}"
         LATENCY="---"
     fi
 
-    # 2. Проверка SSL (порт 443)
-    END_DATE_STR=$(timeout 3 openssl s_client -servername "$DOMAIN" -connect "$DOMAIN":443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+    # 3. Получение ASN и Провайдера через WHOIS
+    # Извлекаем строку с ASN и названием организации
+    WHOIS_DATA=$(whois -h whois.radb.net "$IP" 2>/dev/null | grep -E "origin|descr" | head -n 2)
+    ASN=$(echo "$WHOIS_DATA" | grep -i "origin" | awk '{print $2}' | head -n1)
+    # Если ASN пустой, пробуем другой формат (для некоторых сетей)
+    [ -z "$ASN" ] && ASN="N/A"
+    
+    PROVIDER=$(echo "$WHOIS_DATA" | grep -i "descr" | sed 's/descr://g' | xargs | cut -c1-25)
+    [ -z "$PROVIDER" ] && PROVIDER="Unknown"
 
+    # 4. Проверка SSL
+    END_DATE_STR=$(timeout 2 openssl s_client -servername "$DOMAIN" -connect "$DOMAIN":443 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
     if [ -z "$END_DATE_STR" ]; then
-        SSL_DAYS="N/A"
-        STATUS="\e[1;31mSSL ERROR\e[0m"
+        SSL_DAYS="${RED}ERR${NC}"
     else
-        # Расчет дней до истечения
         END_DATE_S=$(date -d "$END_DATE_STR" +%s)
         CURRENT_DATE_S=$(date +%s)
-        DAYS_LEFT=$(( (END_DATE_S - CURRENT_DATE_S) / 86400 ))
-        SSL_DAYS="$DAYS_LEFT"
-
-        if [ "$DAYS_LEFT" -le 0 ]; then
-            STATUS="\e[1;31mEXPIRED\e[0m"
-        elif [ "$DAYS_LEFT" -le 4 ]; then
-            STATUS="\e[1;33mRENEW SOON\e[0m"
-        else
-            STATUS="\e[1;32mOK\e[0m"
-        fi
+        SSL_DAYS=$(( (END_DATE_S - CURRENT_DATE_S) / 86400 ))
     fi
 
-    # Вывод данных в таблицу
-    printf "%-18s %-20b %-12s %-10s %b\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$STATUS"
+    # Вывод
+    printf "%-18s %-18b %-10s %-18b %-12s %-25s\n" "$DOMAIN" "$PING_RES" "$LATENCY" "$SSL_DAYS" "$ASN" "$PROVIDER"
 done
